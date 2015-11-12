@@ -201,6 +201,8 @@ class BaseCommand(object):
     leave_locale_alone = False
     requires_system_checks = True
 
+    to_implement = 'handle' # Method to implement by subclass
+
     def __init__(self, stdout=None, stderr=None, no_color=False):
         self.stdout = OutputWrapper(stdout or sys.stdout)
         self.stderr = OutputWrapper(stderr or sys.stderr)
@@ -421,6 +423,26 @@ class BaseCommand(object):
             else:
                 self.stdout.write(msg)
 
+    @classmethod
+    def from_func(klass, func, **kwargs):
+        """Create a command from a function
+        Example usage:
+            from django.core.management.base import LabelCommand
+
+            def a(label):
+                "Help message"
+                print label
+
+            Command = LabelCommand.from_func(a, can_import_settings=False)
+        """
+        func_name = klass.to_implement
+        d = {
+            func_name: lambda self, *args, **kwargs: func(*args, **kwargs),
+            'help': func.__doc__,
+        }
+        d.update(**kwargs)
+        return type(str('Command'), (klass,), d)
+
     def handle(self, *args, **options):
         """
         The actual logic of the command. Subclasses must implement
@@ -438,6 +460,8 @@ class AppCommand(BaseCommand):
     ``handle_app_config()``, which will be called once for each application.
     """
     missing_args_message = "Enter at least one application label."
+
+    to_implement = 'handle_app_config' # Method to implement by subclass
 
     def add_arguments(self, parser):
         parser.add_argument('args', metavar='app_label', nargs='+',
@@ -480,6 +504,8 @@ class LabelCommand(BaseCommand):
     """
     label = 'label'
     missing_args_message = "Enter at least one %s." % label
+
+    to_implement = 'handle_label' # Method to implement by subclass
 
     def add_arguments(self, parser):
         parser.add_argument('args', metavar=self.label, nargs='+')
